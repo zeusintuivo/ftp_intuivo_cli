@@ -185,18 +185,21 @@ if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then
                 }
                 fi
 
-
+# curl -u xxx:psw --ftp-create-dirs -T {} ftp://192.168.1.158/public/demon_test/{} \;
 
         while read -r source_one_target; do
         {
             if [ ! -z "${source_one_target}" ] ; then  # if not empty
             {
-
+                
+IFS=\> read source target <<EOF
+${source_one_target}
+EOF
         # REF: https://www.unix.com/shell-programming-and-scripting/227823-ssh-shell-script-access-ftp-over-explicit-tls-ssl.html
         anounce_command  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
     set ftp:ssl-force true
     set ftp:ssl-protect-data true
-    mput ${source_one_target}
+    mput ${source}
     exit
     EOF
     "
