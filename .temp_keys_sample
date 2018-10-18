@@ -1,0 +1,14 @@
+export SSH_KEY="user for ssh name"
+export GITUSER="login username"
+export JOURNAL_PUT_COMMIT_METHOD="put or commit"
+export FTP_USER="username ftp"
+export FTP_PASS="password"
+export FTP_HOST="host.com"
+export FOLDER_TARGET="/html/here/it/goes"
+export TARGETS_TO_DESTINATIONS="from>to
+from1>to1
+from2>to2
+"
+export REMOVE_SOURCEMAPS="build/static/js/main.*.js
+build/static/css/main.*.css
+"
