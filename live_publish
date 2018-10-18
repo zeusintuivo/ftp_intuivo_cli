@@ -79,12 +79,11 @@ it_looks_like_a_filename(){
     {
         if [[ -f "${try_exists}" || -d "${try_exists}/" ]] ; then
         {
-            return 0
+            return 1
         }
         else
         {
-
-	        return 1
+	        return 0
         }
         fi
     }
@@ -398,42 +397,58 @@ function ftps_one_file_using_curl() {
     # globals ${FTP_USER} ${FTP_PASS} {FTP_HOST} ${FTP_PORT} ${FOLDER_TARGET}
     local source="${1}"
     local target="${2}"
-    local filename=$(escape_filename <<< "${source}")
-    local target_filename=$(remove_double_slashes "/${FOLDER_TARGET}/${target}")
-    curl -sSu ${FTP_USER}:${FTP_PASS} --ftp-create-dirs -T "${filename}" --ftp-ssl "ftp://${FTP_HOST}:${FTP_PORT}${target_filename}"
+    #echo "ftps_one_file_using_curl (${source} to ${target} )"
+    #exit 69
+    anounce_command curl -sSu ${FTP_USER}:${FTP_PASS} --ftp-create-dirs -T "${source}" --ftp-ssl "ftp://${FTP_HOST}:${FTP_PORT}${target}"
                 if [ $? -gt 0 ] ; then
                 {
-                    fail "Error executing: lftp ${filename} upload to server ftp://${FTP_HOST}:${FTP_PORT}${target_filename}  Source:<${source}> Target:<${target}>"
+                    echo "Error executing: curl ${source} upload to server ftp://${FTP_HOST}:${FTP_PORT}${target}  Source:<${source}> Target:<${target}>"
                     exit 69;
                 }
                 fi
+                #exit 69
 } #end ftps_one_file_using_curl()
 
 function ftps_directoy_using_curl(){
     local source="${1}"
     local target="${2}"
-    if ( it_looks_like_a_filename "${source}"  ) ; then
+    local all_files one_file base_folder one_item one_target one_cleaned local_dir
+    #echo "ftps_directoy_using_curl (${@})" 
+    if [ -f "${source}" ] ; then
     {
         # file
+        #echo "does not look like file ${source}"
         ftps_one_file_using_curl "${source}" "${target}"
     }
     else 
     {
+        #echo "directory ${source}"
         # directory
-        all_files=$(find "${source}" -maxdepth 1 | sed s"${source}"/g | sed 's/\.\///g' | sed '/^\.$/d' )
+        base_folder="${source}"
+        all_files=$(find "${source}" -maxdepth 1 | sed s@"${source}"@@g | sed 's/\.\///g' | sed '/^\.$/d' | sed '/.DS_Store$/d' )
+        #echo "all_files ${all_files}"
         while read -r one_file; do
         {
-            if [ ! -z "${one_file}" ] && [ -e "${one_file}" ] ; then
+            if [ ! -z "${one_file}" ] ; then
             {
-                if ( it_looks_like_a_filename "${one_file}"  ) ; then
+                one_item=$(remove_double_slashes "/${base_folder}/${one_file}")
+                local_dir=$(pwd)
+                one_cleaned=$(echo "${one_item}" | sed s@"${local_dir}"@@g )
+                one_target="${one_cleaned}"
+                #echo "$one_item"
+                if [ -f "${one_item}"  ] ; then
                 {
+                    #echo "second try file ${one_item} /// ${one_target}" 
+                #exit 69
                     # file
-                    ftps_one_file_using_curl "${one_file}" "${target}"
+                    ftps_one_file_using_curl "${one_item}" "${one_target}"
                 }
                 else 
                 {
+                    #echo "second try directory ${one_item} /// ${one_target}" 
+#exit 69
                     # directory
-                    ftps_directoy_using_curl "${one_file}" "${target}"
+                    ftps_directoy_using_curl "${one_item}" "${one_target}"
                 }
                 fi
             }
@@ -445,7 +460,8 @@ function ftps_directoy_using_curl(){
 } #end ftps_directoy_using_curl()
 
 function ftps_using_curl() {
-    local source_one_target   one_file   all_files 
+    local source_one_target   one_file   all_files source target 
+    #echo "${@}" 
     while read -r source_one_target; do
     {
             if [ ! -z "${source_one_target}" ] ; then  # if not empty
@@ -454,6 +470,7 @@ function ftps_using_curl() {
 IFS=\> read source target <<EOF
 ${source_one_target}
 EOF
+        #echo "one ${source} to $target"  
                 if [ ! -z "${source}" ] && [ -e "${source}" ] ; then
                 {
                     ftps_directoy_using_curl "${source}" "${target}"
@@ -468,15 +485,18 @@ EOF
 
 
 anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
+#echo "${FTP_TLS}" "${TARGETS_TO_DESTINATIONS}" 
 
 if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then 
 {
+#    echo "TLS"
     # NOT FULLY WORKING: ftps_using_lftp "${TARGETS_TO_DESTINATIONS}"   
     ftps_using_curl "${TARGETS_TO_DESTINATIONS}"    
 
 }
 else 
 {
+#    echo "PLAIN"
     ftp_using_curl "${TARGETS_TO_DESTINATIONS}"    
 }
 fi
