@@ -202,7 +202,7 @@ EOF
                 mput ${source}
                 exit
                 EOF"
-                
+
 lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
 set ftp:ssl-force true
 set ftp:ssl-protect-data true
@@ -212,7 +212,7 @@ EOF
 
                 if [ $? -gt 0 ] ; then
                 {
-                    echo "Error executing: lftp ${source_one_target} upload to server"
+                    echo "Error executing: lftp ${source} upload to server"
                 }
                 fi
             }
