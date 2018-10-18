@@ -2,7 +2,17 @@
 #
 # @author Zeus Intuivo <zeus@intuivo.com>
 #
-#curl -sSu $USER:$PASS --ftp-create-dirs -T app/Billing/Stripe.php --ftp-ssl $HOST/app/Billing/Stripe.php
+THISSCRIPTNAME=`basename "$0"`
+
+if [[ -z "$1"  ]] && [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--h" || "$1" == "-help" || "$1" == "--help" ]] ; then   # empty value
+  echo "
+
+From one folder to a live HOST using batch LISTING in subfolders, with curl 
+
+${THISSCRIPTNAME} 
+  "
+    exit 0
+fi
 
 if ! command -v wget >/dev/null 2>&1; then
 	echo '1'
@@ -32,7 +42,6 @@ if ! command -v ag >/dev/null 2>&1; then
     exit 69
 fi
 
-THISSCRIPTNAME=`basename "$0"`
 load_execute_command_wget(){
     local provider="/_/clis/execute_command_intuivo_cli/execute_command"
     [   -e "${provider}"  ] && source "${provider}"
@@ -48,6 +57,13 @@ load_struct_testing_wget(){
     ( ( ! command -v type passed >/dev/null 2>&1; ) && echo -e "\\n \\n  ERROR! Loading struct_testing \\n \\n " && exit 69; )
 } # end load_struct_testing_wget
 load_struct_testing_wget
+
+if command -v anounce >/dev/null 2>&1; then
+    echo '6.5'
+else
+    echo "anounce not found. Check Your internet connection"
+    exit 69
+fi
 
 it_looks_like_a_filename(){
     local try_exists="""${1}"""
@@ -87,6 +103,92 @@ function trim_start_space() {
 function remove_system_dots() {
 	sed 's/^\../  /g'
 }
+
+
+function remove_last_slash {
+    sed 's/\/$//g'  # remove last slash
+}
+
+
+function slashes_to_newlines {
+	(
+	  if [[ "$(uname)" == "Darwin" ]] ; then
+	    # Do something under Mac OS X platform
+	    sed -e 's/'"\/"'/\'$'\n/g' #BSD-way 'Mac' splits slashed into enters with newlines divides slashes
+	  elif [[ "$(expr substr $(uname -s) 1 5)" == "Linux" ]] ; then
+	    # Do something under GNU/Linux platform
+	    sed -e 's/'"\/"'/'"\n"'/g' #Linux way splits slashed into enters with newlines divides slashes
+	  elif [[ "$(expr substr $(uname -s) 1 10)" == "MINGW32_NT" ]] ; then
+	    # Do something under Windows NT platform
+	    sed -e 's/'"\/"'/'"\n"'/g' #Windows way -Not implemented, Windows-GNU splits slashed into enters with newlines divides slashes
+	  fi
+	)
+}
+
+# TEST: echo "/_/work/savedo/projects/savedo-cms-wagon-de/app/assets/fonts/bootstrap/" | slashes_to_newlines
+# EXPECTATION:
+# _
+# work
+# savedo
+# projects
+# savedo-cms-wagon-de
+# app
+# assets
+# fonts
+# bootstrap
+#
+function remove_double_slashes { #removes double slashes in path and converts ./ to PWD
+    # usage
+    #        1. FOLDER=$(remove_double_slashes ".//_/work/savedo/projects/savedo-cms-wagon-de///app/assets///fonts/bootstrap///")
+    #        2. remove_double_slashes ".//_/work/savedo/projects/savedo-cms-wagon-de///app/assets///fonts/bootstrap///"
+    local incoming_string="${@}"
+    local PARTS=$(slashes_to_newlines <<< "${incoming_string}")
+    local ONE_PART
+    local result=""
+    local COUNTER=0
+    local using_string=""
+    while read -r ONE_PART; do
+    # for ONE_PART in ${PARTS}; do
+    {
+        if [ ! -z "${ONE_PART}" ] ; then # if not empty
+        {
+            using_string="${ONE_PART}"
+            if [ $COUNTER -eq 0 ] && ( [ "${using_string}" == "." ] || [ -d "${using_string}" ] ) ; then
+            {
+                result="$(pwd)"
+                [ -d "${using_string}" ] && result="$(pwd)/${using_string}"
+            } else {
+                if [ $COUNTER -eq 0 ] ; then
+                {
+                    result="${using_string}"
+                    [ -d "${using_string}" ] && [[ ${incoming_string:0:1} != "/" ]] && result="$(pwd)/${using_string}"
+                } else {
+                    result="${result}/${using_string}"
+                }
+                fi
+
+            }
+            fi
+            (( COUNTER++ ))
+        }
+        fi
+    }
+    done <<< "${PARTS}"
+    if [[ ${incoming_string:0:1} == "/" ]] ; then # get first char from string
+    {
+       [[ ${result:0:1} != "/" ]] && result="/${result}"
+    }
+    fi
+    echo "${result}"
+    return 0
+}
+# TEST: remove_double_slashes "/_/work/savedo/projects/savedo-cms-wagon-de///app/assets///fonts/bootstrap///"
+# EXPECTATION: /_/work/savedo/projects/savedo-cms-wagon-de/app/assets/fonts/bootstrap
+
+# TEST: remove_double_slashes "./work/savedo/projects/savedo-cms-wagon-de///app/assets///fonts/bootstrap///"
+# EXPECTATION: ${PWD}/work/savedo/projects/savedo-cms-wagon-de/app/assets/fonts/bootstrap
+
+
 
 if [ ! -e "./.temp_keys" ]; then
 	echo '7'
@@ -140,89 +242,79 @@ if [  -z "${FTP_PORT}" ]; then
     exit 69
 fi
 
-anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
-anounce Showing listing
 
- while read -r one_target_file_to_remove_sourcemaps_line; do
-                      {
-    if [ ! -z "${one_target_file_to_remove_sourcemaps_line}" ] ; then  # if not empty
-    {
 
-        sed -ie '/sourceMappingURL/d' "${one_target_file_to_remove_sourcemaps_line}"
-          if [ $? -gt 0 ] ; then
-          {
-            echo "Error executing: sed -ie '/sourceMappingURL/d' ${one_target_file_to_remove_sourcemaps_line}"
-          }
-          fi
-        rm "${one_target_file_to_remove_sourcemaps_line}e"
-                  if [ $? -gt 0 ] ; then
-          {
-            echo "Error executing: rm ${one_target_file_to_remove_sourcemaps_line}e"
-          }
-          fi
 
-    }
-    fi
-}
-done <<< "${REMOVE_SOURCEMAPS}"
+function remove_sourcemaps() {
 
-if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then
-{
-        if !command -v lftp > /dev/null 2>&1; then
+    while read -r one_target_file_to_remove_sourcemaps_line; do
+                        {
+        if [ ! -z "${one_target_file_to_remove_sourcemaps_line}" ] ; then  # if not empty
         {
-            echo '15'
-            echo "lftp not found. please install"
-            brew install lftp
-            exit 69
-        }
-        fi
 
-        anounce_command curl -k -sSu $FTP_USER:$FTP_PASS --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}${FOLDER_TARGET}
-        if [ $? -gt 0 ] ; then
-        {
-            fail "Error executing: showing ftp directory"
-        }
-        fi
-
-# curl -u xxx:psw --ftp-create-dirs -T {} ftp://192.168.1.158/public/demon_test/{} \;
-
-        while read -r source_one_target; do
-        {
-            if [ ! -z "${source_one_target}" ] ; then  # if not empty
+            sed -ie '/sourceMappingURL/d' "${one_target_file_to_remove_sourcemaps_line}"
+            if [ $? -gt 0 ] ; then
             {
-                
-IFS=\> read source target <<EOF
-${source_one_target}
-EOF
-        # REF: https://www.unix.com/shell-programming-and-scripting/227823-ssh-shell-script-access-ftp-over-explicit-tls-ssl.html
-        anounce  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
-                set ftp:ssl-force true
-                set ftp:ssl-protect-data true
-                mput ${source}
-                exit
-                EOF"
-
-lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
-set ftp:ssl-force true
-set ftp:ssl-protect-data true
-mput ${source}
-exit
-EOF
-
-                if [ $? -gt 0 ] ; then
-                {
-                    echo "Error executing: lftp ${source} upload to server"
-                }
-                fi
+                echo "Error executing: sed -ie '/sourceMappingURL/d' ${one_target_file_to_remove_sourcemaps_line}"
             }
             fi
+            rm "${one_target_file_to_remove_sourcemaps_line}e"
+                    if [ $? -gt 0 ] ; then
+            {
+                echo "Error executing: rm ${one_target_file_to_remove_sourcemaps_line}e"
+            }
+            fi
+
         }
-        done <<< "${TARGETS_TO_DESTINATIONS}"
+        fi
+    }
+    done <<< "${@}"
 
-}
-else 
-{
+} #end remove_sourcemaps()
 
+remove_sourcemaps "${REMOVE_SOURCEMAPS}"
+
+function copy_using_curl() {
+    local FROMPATH="${1}"
+    local TOPATH="${2}"
+    local filename just_file_name COPY_FROM one_file all_files COPY_FROM_corrected TOPATH_corrected
+    anounce Copy Batch
+    all_files=$(find "$FROMPATH" -maxdepth 1 | sed s"$FROMPATH"/g | sed 's/\.\///g' | sed '/^\.$/d' )
+    #anounce  Found:"${all_files}"
+    #exit
+    while read -r one_file; do
+    {
+        if [ ! -z "${one_file}" ] && [[ "${FROMPATH}/${one_file}" != "${FROMPATH}/${FROMPATH}" ]]; then
+        {
+            filename=$(escape_filename <<< "${one_file}")
+            [ -d "${FROMPATH}/${filename}/" ] && mkdir -p "${TOPATH}/${filename}"
+            anounce "${filename}"
+            just_file_name=$(echo $(basename "${filename}"))
+            if [ -e "${filename}" ] && [ ! -e "${FROMPATH}/${filename}" ]; then
+            {
+                COPY_FROM="${filename}"
+            }
+            elif [ ! -e "${filename}" ] && [ -e "${FROMPATH}/${filename}" ]; then
+            {
+                COPY_FROM="${FROMPATH}/${filename}"
+            }
+            fi
+            COPY_FROM_corrected=$(remove_double_slashes "${COPY_FROM}")
+            # DEBUG echo "${COPY_FROM}"
+            # DEBUG echo "${COPY_FROM_corrected}"
+            TOPATH_corrected=$(remove_double_slashes "${TOPATH}")
+            # DEBUG echo "${TOPATH}"
+            # DEBUG echo "${TOPATH_corrected}"
+            anounce_command rsync -av "${COPY_FROM_corrected}" "${TOPATH_corrected}/"
+        }
+        fi
+    }
+    done <<< "${all_files}"
+} #end copy_using_curl()
+
+
+function ftp_using_curl() {
+        anounce Showing listing
         anounce_command curl -k -sSu $FTP_USER:$FTP_PASS  ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}${FOLDER_TARGET}
                 if [ $? -gt 0 ] ; then
                 {
@@ -250,6 +342,146 @@ EOF
             }
             fi
         }
-        done <<< "${TARGETS_TO_DESTINATIONS}"
+        done <<< "${@}"
+        
+} #end ftp_using_curl
+
+
+
+function ftps_using_lftp() {
+ if ! command -v lftp >/dev/null 2>&1; then
+        {
+            echo '15'
+            echo "lftp not found. please install"
+            brew install lftp
+            exit 69
+        }
+        fi
+
+        anounce_command curl -k -sSu $FTP_USER:$FTP_PASS --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}
+                if [ $? -gt 0 ] ; then
+                {
+                    fail "Error executing: showing ftp directory"
+                }
+                fi
+
+        while read -r source_one_target; do
+        {
+            if [ ! -z "${source_one_target}" ] ; then  # if not empty
+            {
+                
+IFS=\> read source target <<EOF
+${source_one_target}
+EOF
+        # REF: https://www.unix.com/shell-programming-and-scripting/227823-ssh-shell-script-access-ftp-over-explicit-tls-ssl.html
+        anounce_command  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
+                set ftp:ssl-force true
+                set ftp:ssl-protect-data true
+                mput ${source}
+                exit
+                EOF"
+                if [ $? -gt 0 ] ; then
+                {
+                    echo "Error executing: lftp ${source} upload to server"
+                }
+                fi
+            }
+            fi
+        }
+        done <<< "${@}"
+} #end ftps_using_lftp()
+
+function ftps_one_file_using_curl() {        
+    # REF: https://stackoverflow.com/questions/14019890/uploading-all-of-files-in-my-local-directory-with-curl
+    #    curl -u xxx:psw --ftp-create-dirs -T {} ftp://192.168.1.158/public/demon_test/{} \;
+    #    curl -sSu $USER:$PASS --ftp-create-dirs -T app/Billing/Stripe.php --ftp-ssl $HOST/app/Billing/Stripe.php
+    #    curl -sSu ${FTP_USER}:${FTP_PASS} --ftp-create-dirs -T "${filename}" --ftp-ssl "ftp://${FTP_HOST}:${FTP_PORT}${target_filename}"
+    # globals ${FTP_USER} ${FTP_PASS} {FTP_HOST} ${FTP_PORT} ${FOLDER_TARGET}
+    local source="${1}"
+    local target="${2}"
+    local filename=$(escape_filename <<< "${source}")
+    local target_filename=$(remove_double_slashes "/${FOLDER_TARGET}/${target}")
+    curl -sSu ${FTP_USER}:${FTP_PASS} --ftp-create-dirs -T "${filename}" --ftp-ssl "ftp://${FTP_HOST}:${FTP_PORT}${target_filename}"
+                if [ $? -gt 0 ] ; then
+                {
+                    fail "Error executing: lftp ${filename} upload to server ftp://${FTP_HOST}:${FTP_PORT}${target_filename}  Source:<${source}> Target:<${target}>"
+                    exit 69;
+                }
+                fi
+} #end ftps_one_file_using_curl()
+
+function ftps_directoy_using_curl(){
+    local source="${1}"
+    local target="${2}"
+    if ( it_looks_like_a_filename "${source}"  ) ; then
+    {
+        # file
+        ftps_one_file_using_curl "${source}" "${target}"
+    }
+    else 
+    {
+        # directory
+        all_files=$(find "${source}" -maxdepth 1 | sed s"${source}"/g | sed 's/\.\///g' | sed '/^\.$/d' )
+        while read -r one_file; do
+        {
+            if [ ! -z "${one_file}" ] && [ -e "${one_file}" ] ; then
+            {
+                if ( it_looks_like_a_filename "${one_file}"  ) ; then
+                {
+                    # file
+                    ftps_one_file_using_curl "${one_file}" "${target}"
+                }
+                else 
+                {
+                    # directory
+                    ftps_directoy_using_curl "${one_file}" "${target}"
+                }
+                fi
+            }
+            fi
+        }
+        done <<< "${all_files}"
+    }
+    fi
+} #end ftps_directoy_using_curl()
+
+function ftps_using_curl() {
+    local source_one_target   one_file   all_files 
+    while read -r source_one_target; do
+    {
+            if [ ! -z "${source_one_target}" ] ; then  # if not empty
+            {
+                
+IFS=\> read source target <<EOF
+${source_one_target}
+EOF
+                if [ ! -z "${source}" ] && [ -e "${source}" ] ; then
+                {
+                    ftps_directoy_using_curl "${source}" "${target}"
+                }
+                fi
+            }
+            fi
+    }
+    done <<< "${@}"
+} #end ftps_using_curl()
+
+
+
+anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
+
+if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then 
+{
+    # NOT FULLY WORKING: ftps_using_lftp "${TARGETS_TO_DESTINATIONS}"   
+    ftps_using_curl "${TARGETS_TO_DESTINATIONS}"    
+
+}
+else 
+{
+    ftp_using_curl "${TARGETS_TO_DESTINATIONS}"    
 }
 fi
+
+
+
+
