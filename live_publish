@@ -2,6 +2,7 @@
 #
 # @author Zeus Intuivo <zeus@intuivo.com>
 #
+#curl -sSu $USER:$PASS --ftp-create-dirs -T app/Billing/Stripe.php --ftp-ssl $HOST/app/Billing/Stripe.php
 
 if ! command -v wget >/dev/null 2>&1; then
 	echo '1'
