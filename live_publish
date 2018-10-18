@@ -196,13 +196,20 @@ IFS=\> read source target <<EOF
 ${source_one_target}
 EOF
         # REF: https://www.unix.com/shell-programming-and-scripting/227823-ssh-shell-script-access-ftp-over-explicit-tls-ssl.html
-        anounce_command  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
-    set ftp:ssl-force true
-    set ftp:ssl-protect-data true
-    mput ${source}
-    exit
-    EOF
-    "
+        anounce  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
+                set ftp:ssl-force true
+                set ftp:ssl-protect-data true
+                mput ${source}
+                exit
+                EOF"
+                
+lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
+set ftp:ssl-force true
+set ftp:ssl-protect-data true
+mput ${source}
+exit
+EOF
+
                 if [ $? -gt 0 ] ; then
                 {
                     echo "Error executing: lftp ${source_one_target} upload to server"
