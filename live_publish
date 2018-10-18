@@ -3,6 +3,7 @@
 # @author Zeus Intuivo <zeus@intuivo.com>
 #
 
+
 if ! command -v wget >/dev/null 2>&1; then
 	echo '1'
     echo "wget not found. please install"
@@ -121,11 +122,27 @@ if [  -z "${TARGETS_TO_DESTINATIONS}" ]; then
 fi
 if [  -z "${FOLDER_TARGET}" ]; then
     echo '12'
-    echo "Error: Folder target host Not found: ${FOLDER_TARGET}"
+    echo "Error: FOLDER_TARGET Not found: ${FOLDER_TARGET}"
+    exit 69
+fi
+#if [  -z "${REMOVE_SOURCEMAPS}" ]; then
+#    echo '13'
+#    echo "Error: REMOVE_SOURCEMAPS Not found: ${REMOVE_SOURCEMAPS}"
+#    exit 69
+#fi
+if [  -z "${FTP_TLS}" ]; then
+    echo '14'
+    echo "Error: FTP_TLS key Not found: ${FTP_TLS}"
+    exit 69
+fi
+if [  -z "${FTP_PORT}" ]; then
+    echo '14'
+    echo "Error: FTP_PORT key Not found: ${FTP_PORT}"
     exit 69
 fi
 
 anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
+anounce Showing listing
 
  while read -r one_target_file_to_remove_sourcemaps_line; do
                       {
@@ -150,28 +167,82 @@ anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
 }
 done <<< "${REMOVE_SOURCEMAPS}"
 
-echo "Showing dir list"
-anounce_command curl -k -sSu $FTP_USER:$FTP_PASS  --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}
+if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then 
+{
+        if ! command -v lftp >/dev/null 2>&1; then
+        {
+            echo '15'
+            echo "lftp not found. please install"
+            brew install lftp
+            exit 69
+        }
+        fi
 
-action="anounce_command  curl -sSu $FTP_USER:$FTP_PASS -T \${source} --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}\${target}"
+        anounce_command curl -k -sSu $FTP_USER:$FTP_PASS --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}${FOLDER_TARGET}
+                if [ $? -gt 0 ] ; then
+                {
+                    fail "Error executing: showing ftp directory"
+                }
+                fi
 
- while read -r source_one_target; do
-                      {
-    if [ ! -z "${source_one_target}" ] ; then  # if not empty
-    {
+        while read -r source_one_target; do
+                            {
+            if [ ! -z "${source_one_target}" ] ; then  # if not empty
+            {
+
+        # REF: https://www.unix.com/shell-programming-and-scripting/227823-ssh-shell-script-access-ftp-over-explicit-tls-ssl.html
+        anounce_command  "lftp -u ${FTP_USER},${FTP_PASS} ftp://${FTP_HOST}:${FTP_PORT} <<EOF
+    set ftp:ssl-force true
+    set ftp:ssl-protect-data true
+    mput ${source_one_target}
+    exit
+    EOF
+    "
+                if [ $? -gt 0 ] ; then
+                {
+                    echo "Error executing: lftp ${source_one_target} upload to server"
+                }
+                fi
+            }
+            fi
+        }
+        done <<< "${TARGETS_TO_DESTINATIONS}"
+
+}
+else 
+{
+
+        anounce_command curl -k -sSu $FTP_USER:$FTP_PASS  ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}${FOLDER_TARGET}
+                if [ $? -gt 0 ] ; then
+                {
+                    fail "Error executing: showing ftp directory"
+                }
+                fi
+
+        action="anounce_command  curl -sSu $FTP_USER:$FTP_PASS -T \${source} ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}\${target}"
+
+        while read -r source_one_target; do
+                            {
+            if [ ! -z "${source_one_target}" ] ; then  # if not empty
+            {
 
 IFS=\> read source target <<EOF
 ${source_one_target}
 EOF
-          # replace value inside string substitution expresion bash
-          eval """${action}"""
-          if [ $? -gt 0 ] ; then
-          {
-            echo "Error executing: ${action}"
-          }
-          fi
-    }
-    fi
+                # replace value inside string substitution expresion bash
+                eval """${action}"""
+                if [ $? -gt 0 ] ; then
+                {
+                    echo "Error executing: ${action}"
+                }
+                fi
+            }
+            fi
+        }
+        done <<< "${TARGETS_TO_DESTINATIONS}"
 }
-done <<< "${TARGETS_TO_DESTINATIONS}"
+fi
+
+
+
 

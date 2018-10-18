@@ -9,6 +9,7 @@ export TARGETS_TO_DESTINATIONS="from>to
 from1>to1
 from2>to2
 "
-export REMOVE_SOURCEMAPS="build/static/js/main.*.js
+export REMOVE_SOURCEMAPS="
+build/static/js/main.*.js
 build/static/css/main.*.css
 "
