@@ -3,7 +3,6 @@
 # @author Zeus Intuivo <zeus@intuivo.com>
 #
 
-
 if ! command -v wget >/dev/null 2>&1; then
 	echo '1'
     echo "wget not found. please install"
@@ -88,7 +87,6 @@ function remove_system_dots() {
 	sed 's/^\../  /g'
 }
 
-
 if [ ! -e "./.temp_keys" ]; then
 	echo '7'
     echo "Error: Missing ./.temp_keys file with Settings"
@@ -167,9 +165,9 @@ anounce Showing listing
 }
 done <<< "${REMOVE_SOURCEMAPS}"
 
-if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then 
+if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then
 {
-        if ! command -v lftp >/dev/null 2>&1; then
+        if !command -v lftp > /dev/null 2>&1; then
         {
             echo '15'
             echo "lftp not found. please install"
@@ -179,11 +177,11 @@ if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then
         fi
 
         anounce_command curl -k -sSu $FTP_USER:$FTP_PASS --ftp-ssl ftp://${FTP_HOST}:${FTP_PORT}${FOLDER_TARGET}${FOLDER_TARGET}
-                if [ $? -gt 0 ] ; then
-                {
-                    fail "Error executing: showing ftp directory"
-                }
-                fi
+        if [ $? -gt 0 ] ; then
+        {
+            fail "Error executing: showing ftp directory"
+        }
+        fi
 
 # curl -u xxx:psw --ftp-create-dirs -T {} ftp://192.168.1.158/public/demon_test/{} \;
 
@@ -254,7 +252,3 @@ EOF
         done <<< "${TARGETS_TO_DESTINATIONS}"
 }
 fi
-
-
-
-
