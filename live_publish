@@ -121,12 +121,7 @@ if [  -z "${TARGETS_TO_DESTINATIONS}" ]; then
 fi
 if [  -z "${FOLDER_TARGET}" ]; then
     echo '12'
-    echo "Error: FTP host Not found: ${FOLDER_TARGET}"
-    exit 69
-fi
-if [  -z "${REMOVE_SOURCEMAPS}" ]; then
-    echo '13'
-    echo "Error: FTP host Not found: ${REMOVE_SOURCEMAPS}"
+    echo "Error: Folder target host Not found: ${FOLDER_TARGET}"
     exit 69
 fi
 
