@@ -185,8 +185,10 @@ if [[ "${FTP_TLS}" == *"YES"* ]] || [[ "${FTP_TLS}" == *"yes"* ]]; then
                 }
                 fi
 
+
+
         while read -r source_one_target; do
-                            {
+        {
             if [ ! -z "${source_one_target}" ] ; then  # if not empty
             {
 
