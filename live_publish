@@ -1,0 +1,180 @@
+#!/bin/bash
+#
+# @author Zeus Intuivo <zeus@intuivo.com>
+#
+
+if ! command -v wget >/dev/null 2>&1; then
+	echo '1'
+    echo "wget not found. please install"
+    exit 69
+fi
+if ! command -v rsync >/dev/null 2>&1; then
+    echo "rsync not found. please install"
+    exit 69
+fi
+if ! command -v find >/dev/null 2>&1; then
+    echo "find not found. please install"
+    exit 69
+fi
+if ! command -v sed >/dev/null 2>&1; then
+    echo "sed not found. please install"
+    exit 69
+fi
+if ! command -v curl >/dev/null 2>&1; then
+	echo '5'
+    echo "curl not found. please install"
+    exit 69
+fi
+if ! command -v ag >/dev/null 2>&1; then
+	echo '6'
+    echo "ag not found. please install"
+    exit 69
+fi
+
+THISSCRIPTNAME=`basename "$0"`
+load_execute_command_wget(){
+    local provider="/_/clis/execute_command_intuivo_cli/execute_command"
+    [   -e "${provider}"  ] && source "${provider}"
+    [ ! -e "${provider}"  ] && eval """$(wget --quiet --no-check-certificate  https://raw.githubusercontent.com/zeusintuivo/execute_command_intuivo_cli/master/execute_command -O -  2>/dev/null )"""   # suppress only wget download messages, but keep wget output for variable
+    ( ( ! command -v type passed >/dev/null 2>&1; ) && echo -e "\\n \\n  ERROR! Loading execute_command \\n \\n " && exit 69; )
+} # end load_execute_command_wget
+load_execute_command_wget
+
+load_struct_testing_wget(){
+    local provider="/_/clis/execute_command_intuivo_cli/struct_testing"
+    [   -e "${provider}"  ] && source "${provider}"
+    [ ! -e "${provider}"  ] && eval """$(wget --quiet --no-check-certificate  https://raw.githubusercontent.com/zeusintuivo/execute_command_intuivo_cli/master/struct_testing -O -  2>/dev/null )"""   # suppress only wget download messages, but keep wget output for variable
+    ( ( ! command -v type passed >/dev/null 2>&1; ) && echo -e "\\n \\n  ERROR! Loading struct_testing \\n \\n " && exit 69; )
+} # end load_struct_testing_wget
+load_struct_testing_wget
+
+it_looks_like_a_filename(){
+    local try_exists="""${1}"""
+    # Sample Use:
+    # if ( it_looks_like_a_filename "${try_FILENAME}"  ) ; then
+    #    {
+    #        (( DEBUG_VERB_READING_LOGIC )) && echo "              it_looks_like_a_filename"
+    #    }
+    # fi
+    #local file_was_listed_as_deleted=$(file_was_deleted "${try_exists}")
+    #(( DEBUG_VERB_READING_LOGIC )) && ( file_was_deleted "${try_exists}" ) && echo " file_was_listed_as_deleted ${try_exists}"
+    #(( DEBUG_VERB_READING_LOGIC )) && echo "                +-- it_looks_like_a_filename is trying $try_exists "
+    if  [[ ! -z "${try_exists}" ]] ; then
+    {
+        if [[ -f "${try_exists}" || -d "${try_exists}/" ]] ; then
+        {
+            return 0
+        }
+        else
+        {
+
+	        return 1
+        }
+        fi
+    }
+    else
+    {
+        return 1
+    }
+    fi
+} # end it_looks_like_a_filename
+
+function trim_start_space() {
+	sed -e 's/^[[:space:]]*//' | sed 's/^\ //g' | sed 's/^\t//g'
+}
+
+function remove_system_dots() {
+	sed 's/^\../  /g'
+}
+
+
+if [ ! -e "./.temp_keys" ]; then
+	echo '7'
+    echo "Error: Missing ./.temp_keys file with Settings"
+	exit 69
+fi
+
+. ./.temp_keys
+
+
+anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
+
+if [  -z "${FTP_USER}" ]; then
+    echo '8'
+    echo "Error: FTP User Not found: ${FTP_USER}"
+    exit 69
+fi
+if [  -z "${FTP_PASS}" ]; then
+    echo '9'
+    echo "Error: FTP Password Not found: ${FTP_PASS}"
+    exit 6
+fi
+if [  -z "${FTP_HOST}" ]; then
+    echo '10'
+    echo "Error: FTP host Not found: ${FTP_HOST}"
+    exit 69
+fi
+if [  -z "${TARGETS_TO_DESTINATIONS}" ]; then
+    echo '11'
+    echo "Error: TARGETS_TO_DESTINATIONS host Not found: ${TARGETS_TO_DESTINATIONS}"
+    exit 69
+fi
+if [  -z "${FOLDER_TARGET}" ]; then
+    echo '12'
+    echo "Error: FTP host Not found: ${FOLDER_TARGET}"
+    exit 69
+fi
+if [  -z "${REMOVE_SOURCEMAPS}" ]; then
+    echo '13'
+    echo "Error: FTP host Not found: ${REMOVE_SOURCEMAPS}"
+    exit 69
+fi
+
+anounce ftp://$FTP_USER:$FTP_PASS@$FTP_HOST$FOLDER_TARGET
+
+ while read -r one_target_file_to_remove_sourcemaps_line; do
+                      {
+    if [ ! -z "${one_target_file_to_remove_sourcemaps_line}" ] ; then  # if not empty
+    {
+
+        sed -ie '/sourceMappingURL/d' "${one_target_file_to_remove_sourcemaps_line}"
+          if [ $? -gt 0 ] ; then
+          {
+            echo "Error executing: sed -ie '/sourceMappingURL/d' ${one_target_file_to_remove_sourcemaps_line}"
+          }
+          fi
+        rm "${one_target_file_to_remove_sourcemaps_line}e"
+                  if [ $? -gt 0 ] ; then
+          {
+            echo "Error executing: rm ${one_target_file_to_remove_sourcemaps_line}e"
+          }
+          fi
+
+    }
+    fi
+}
+done <<< "${REMOVE_SOURCEMAPS}"
+
+
+action="anounce_command  curl -sSu $FTP_USER:$FTP_PASS -T \${source} ftp://${FTP_HOST}${FOLDER_TARGET}\${target}"
+
+ while read -r source_one_target; do
+                      {
+    if [ ! -z "${source_one_target}" ] ; then  # if not empty
+    {
+
+IFS=\> read source target <<EOF
+${source_one_target}
+EOF
+          # replace value inside string substitution expresion bash
+          eval """${action}"""
+          if [ $? -gt 0 ] ; then
+          {
+            echo "Error executing: ${action}"
+          }
+          fi
+    }
+    fi
+}
+done <<< "${TARGETS_TO_DESTINATIONS}"
+
